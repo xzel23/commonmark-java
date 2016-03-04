@@ -32,10 +32,16 @@ public class BlockQuoteParser extends AbstractBlockParser {
             if (newIndex < line.length() && line.charAt(newIndex) == ' ') {
                 newIndex++;
             }
+            addSourceSpan(SourceSpans.fromState(state, nextNonSpace));
             return BlockContinue.atIndex(newIndex);
         } else {
             return BlockContinue.none();
         }
+    }
+
+    @Override
+    public void onLazyContinuationLine(ParserState state) {
+        addSourceSpan(SourceSpans.fromState(state, state.getNextNonSpaceIndex()));
     }
 
     public static class Factory extends AbstractBlockParserFactory {
@@ -48,7 +54,9 @@ public class BlockQuoteParser extends AbstractBlockParser {
                 if (newOffset < line.length() && line.charAt(newOffset) == ' ') {
                     newOffset++;
                 }
-                return BlockStart.of(new BlockQuoteParser()).atIndex(newOffset);
+                BlockQuoteParser parser = new BlockQuoteParser();
+                parser.addSourceSpan(SourceSpans.fromState(state, nextNonSpace));
+                return BlockStart.of(parser).atIndex(newOffset);
             } else {
                 return BlockStart.none();
             }

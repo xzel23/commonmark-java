@@ -1,9 +1,15 @@
 package org.commonmark.parser.block;
 
 import org.commonmark.node.Block;
+import org.commonmark.node.SourceSpan;
 import org.commonmark.parser.InlineParser;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public abstract class AbstractBlockParser implements BlockParser {
+
+    private final List<SourceSpan> sourceSpans = new ArrayList<>();
 
     @Override
     public boolean isContainer() {
@@ -16,7 +22,16 @@ public abstract class AbstractBlockParser implements BlockParser {
     }
 
     @Override
+    public List<SourceSpan> getSourceSpans() {
+        return sourceSpans;
+    }
+
+    @Override
     public void addLine(CharSequence line) {
+    }
+
+    @Override
+    public void onLazyContinuationLine(ParserState state) {
     }
 
     @Override
@@ -27,4 +42,7 @@ public abstract class AbstractBlockParser implements BlockParser {
     public void parseInlines(InlineParser inlineParser) {
     }
 
+    protected void addSourceSpan(SourceSpan sourceSpan) {
+        sourceSpans.add(sourceSpan);
+    }
 }

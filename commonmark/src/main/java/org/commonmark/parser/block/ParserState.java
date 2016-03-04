@@ -12,6 +12,11 @@ public interface ParserState {
     CharSequence getLine();
 
     /**
+     * @return the index of the current line within the document (0-based)
+     */
+    int getLineIndex();
+
+    /**
      * @return the current index within the line (0-based)
      */
     int getIndex();

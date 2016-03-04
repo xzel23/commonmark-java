@@ -36,11 +36,21 @@ public class ListBlockParser extends AbstractBlockParser {
     public BlockContinue tryContinue(ParserState state) {
         // List blocks themselves don't have any markers, only list items. So try to stay in the list.
         // If there is a block start other than list item, canContain makes sure that this list is closed.
+        // Also, our source spans are handled by the list item parser.
         return BlockContinue.atIndex(state.getIndex());
+    }
+
+    @Override
+    public void onLazyContinuationLine(ParserState state) {
+        addSourceSpan(SourceSpans.fromState(state, state.getNextNonSpaceIndex()));
     }
 
     public void setTight(boolean tight) {
         block.setTight(tight);
+    }
+
+    void addSourceSpanFromItem(SourceSpan sourceSpan) {
+        addSourceSpan(sourceSpan);
     }
 
     /**
@@ -99,31 +109,36 @@ public class ListBlockParser extends AbstractBlockParser {
         @Override
         public BlockStart tryStart(ParserState state, MatchedBlockParser matchedBlockParser) {
             BlockParser matched = matchedBlockParser.getMatchedBlockParser();
-
             if (state.getIndent() >= 4 && !(matched instanceof ListBlockParser)) {
                 return BlockStart.none();
             }
+
             int nextNonSpace = state.getNextNonSpaceIndex();
             ListData listData = parseListMarker(state.getLine(), nextNonSpace);
             if (listData == null) {
                 return BlockStart.none();
             }
 
-            // list item
             int newIndex = nextNonSpace + listData.padding;
-
             int itemIndent = state.getIndent() + listData.padding;
-            ListItemParser listItemParser = new ListItemParser(itemIndent);
+            SourceSpan sourceSpan = SourceSpans.fromState(state, nextNonSpace);
 
-            // prepend the list block if needed
+            // Prepend a new list block if needed
             if (!(matched instanceof ListBlockParser) ||
                     !(listsMatch((ListBlock) matched.getBlock(), listData.listBlock))) {
 
                 ListBlockParser listBlockParser = new ListBlockParser(listData.listBlock);
                 listBlockParser.setTight(true);
+                listBlockParser.addSourceSpan(sourceSpan);
+
+                ListItemParser listItemParser = new ListItemParser(itemIndent, listBlockParser, sourceSpan);
 
                 return BlockStart.of(listBlockParser, listItemParser).atIndex(newIndex);
             } else {
+                ListBlockParser listBlockParser = (ListBlockParser) matched;
+                listBlockParser.addSourceSpan(sourceSpan);
+
+                ListItemParser listItemParser = new ListItemParser(itemIndent, listBlockParser, sourceSpan);
                 return BlockStart.of(listItemParser).atIndex(newIndex);
             }
         }

@@ -2,9 +2,12 @@ package org.commonmark.internal;
 
 import org.commonmark.node.Block;
 import org.commonmark.node.Heading;
+import org.commonmark.node.SourceSpan;
 import org.commonmark.parser.InlineParser;
 import org.commonmark.parser.block.*;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -55,8 +58,10 @@ public class HeadingParser extends AbstractBlockParser {
                 int level = matcher.group(0).trim().length(); // number of #s
                 // remove trailing ###s:
                 String content = ATX_TRAILING.matcher(line.subSequence(newOffset, line.length())).replaceAll("");
-                return BlockStart.of(new HeadingParser(level, content))
-                        .atIndex(line.length());
+                HeadingParser parser = new HeadingParser(level, content);
+                parser.addSourceSpan(SourceSpans.fromState(state, nextNonSpace));
+
+                return BlockStart.of(parser).atIndex(line.length());
 
             } else if (paragraph != null &&
                     ((matcher = SETEXT_HEADING.matcher(line.subSequence(nextNonSpace, line.length()))).find())) {
@@ -64,9 +69,12 @@ public class HeadingParser extends AbstractBlockParser {
 
                 int level = matcher.group(0).charAt(0) == '=' ? 1 : 2;
                 String content = paragraph.toString();
-                return BlockStart.of(new HeadingParser(level, content))
-                        .atIndex(line.length())
-                        .replaceActiveBlockParser();
+                HeadingParser parser = new HeadingParser(level, content);
+                List<SourceSpan> sourceSpans = matchedBlockParser.getMatchedBlockParser().getSourceSpans();
+                for (SourceSpan sourceSpan : sourceSpans) {
+                    parser.addSourceSpan(sourceSpan);
+                }
+                return BlockStart.of(parser).atIndex(line.length()).replaceActiveBlockParser();
             } else {
                 return BlockStart.none();
             }

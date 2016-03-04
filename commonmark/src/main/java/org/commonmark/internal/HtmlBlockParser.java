@@ -83,6 +83,7 @@ public class HtmlBlockParser extends AbstractBlockParser {
         if (state.isBlank() && closingPattern == null) {
             return BlockContinue.none();
         } else {
+            addSourceSpan(SourceSpans.fromState(state, state.getIndex()));
             return BlockContinue.atIndex(state.getIndex());
         }
     }
@@ -119,7 +120,9 @@ public class HtmlBlockParser extends AbstractBlockParser {
                     Pattern closer = BLOCK_PATTERNS[blockType][1];
                     boolean matches = opener.matcher(line.subSequence(nextNonSpace, line.length())).find();
                     if (matches) {
-                        return BlockStart.of(new HtmlBlockParser(closer)).atIndex(state.getIndex());
+                        HtmlBlockParser parser = new HtmlBlockParser(closer);
+                        parser.addSourceSpan(SourceSpans.fromState(state, state.getIndex()));
+                        return BlockStart.of(parser).atIndex(state.getIndex());
                     }
                 }
             }

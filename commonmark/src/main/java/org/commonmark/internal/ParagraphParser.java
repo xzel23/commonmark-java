@@ -3,6 +3,7 @@ package org.commonmark.internal;
 import org.commonmark.internal.util.Parsing;
 import org.commonmark.node.Block;
 import org.commonmark.node.Paragraph;
+import org.commonmark.node.SourceSpan;
 import org.commonmark.parser.block.AbstractBlockParser;
 import org.commonmark.parser.block.BlockContinue;
 import org.commonmark.parser.InlineParser;
@@ -13,6 +14,10 @@ public class ParagraphParser extends AbstractBlockParser {
     private final Paragraph block = new Paragraph();
     private BlockContent content = new BlockContent();
 
+    public ParagraphParser(SourceSpan sourceSpan) {
+        addSourceSpan(sourceSpan);
+    }
+
     @Override
     public Block getBlock() {
         return block;
@@ -21,6 +26,7 @@ public class ParagraphParser extends AbstractBlockParser {
     @Override
     public BlockContinue tryContinue(ParserState state) {
         if (!state.isBlank()) {
+            addSourceSpan(SourceSpans.fromState(state, state.getNextNonSpaceIndex()));
             return BlockContinue.atIndex(state.getIndex());
         } else {
             return BlockContinue.none();
@@ -33,7 +39,8 @@ public class ParagraphParser extends AbstractBlockParser {
     }
 
     @Override
-    public void closeBlock() {
+    public void onLazyContinuationLine(ParserState state) {
+        addSourceSpan(SourceSpans.fromState(state, state.getNextNonSpaceIndex()));
     }
 
     public void closeBlock(InlineParserImpl inlineParser) {
@@ -51,6 +58,7 @@ public class ParagraphParser extends AbstractBlockParser {
             block.unlink();
             content = null;
         } else {
+            block.setSourceSpans(getSourceSpans());
             content = new BlockContent(contentString);
         }
     }

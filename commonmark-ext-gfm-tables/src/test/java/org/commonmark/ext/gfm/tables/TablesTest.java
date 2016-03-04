@@ -2,12 +2,17 @@ package org.commonmark.ext.gfm.tables;
 
 import org.commonmark.Extension;
 import org.commonmark.html.HtmlRenderer;
+import org.commonmark.node.Node;
+import org.commonmark.node.SourceSpan;
 import org.commonmark.parser.Parser;
 import org.commonmark.test.RenderingTestCase;
 import org.junit.Test;
 
 import java.util.Collections;
 import java.util.Set;
+
+import static org.hamcrest.Matchers.contains;
+import static org.junit.Assert.assertThat;
 
 public class TablesTest extends RenderingTestCase {
 
@@ -298,6 +303,35 @@ public class TablesTest extends RenderingTestCase {
                 "</tbody>\n" +
                 "</table>\n" +
                 "<p>table, you are over</p>\n");
+    }
+
+    @Test
+    public void sourceSpans() {
+        Node document = PARSER.parse("Abc|Def\n---|---\n1|2\n3|4\n");
+
+        TableBlock block = (TableBlock) document.getFirstChild();
+        assertThat(block.getSourceSpans(),
+                contains(SourceSpan.of(1, 1, 7), SourceSpan.of(2, 1, 7), SourceSpan.of(3, 1, 3), SourceSpan.of(4, 1, 3)));
+
+        TableHead head = (TableHead) block.getFirstChild();
+        assertThat(head.getSourceSpans(), contains(SourceSpan.of(1, 1, 7)));
+
+        TableRow headRow = (TableRow) head.getFirstChild();
+        assertThat(headRow.getSourceSpans(), contains(SourceSpan.of(1, 1, 7)));
+        // TODO:
+//        TableCell headRowCell1 = (TableCell) headRow.getFirstChild();
+//        TableCell headRowCell2 = (TableCell) headRow.getLastChild();
+//        assertThat(headRowCell1.getSourceSpans(), contains(SourceSpan.of(1, 1, 3)));
+//        assertThat(headRowCell2.getSourceSpans(), contains(SourceSpan.of(1, 5, 7)));
+
+        TableBody body = (TableBody) block.getLastChild();
+        assertThat(body.getSourceSpans(), contains(SourceSpan.of(3, 1, 3), SourceSpan.of(4, 1, 3)));
+
+        TableRow bodyRow1 = (TableRow) body.getFirstChild();
+        assertThat(bodyRow1.getSourceSpans(), contains(SourceSpan.of(3, 1, 3)));
+
+        TableRow bodyRow2 = (TableRow) body.getLastChild();
+        assertThat(bodyRow2.getSourceSpans(), contains(SourceSpan.of(4, 1, 3)));
     }
 
     @Override
