@@ -33,6 +33,7 @@ public class BlockQuoteParser extends AbstractBlockParser {
             if (Parsing.isSpaceOrTab(state.getLine(), nextNonSpace + 1)) {
                 newColumn++;
             }
+            addSourceSpan(SourceSpans.fromState(state, nextNonSpace));
             return BlockContinue.atColumn(newColumn);
         } else {
             return BlockContinue.none();
@@ -44,6 +45,11 @@ public class BlockQuoteParser extends AbstractBlockParser {
         return state.getIndent() < Parsing.CODE_BLOCK_INDENT && index < line.length() && line.charAt(index) == '>';
     }
 
+    @Override
+    public void onLazyContinuationLine(ParserState state) {
+        addSourceSpan(SourceSpans.fromState(state, state.getNextNonSpaceIndex()));
+    }
+
     public static class Factory extends AbstractBlockParserFactory {
         public BlockStart tryStart(ParserState state, MatchedBlockParser matchedBlockParser) {
             int nextNonSpace = state.getNextNonSpaceIndex();
@@ -53,7 +59,9 @@ public class BlockQuoteParser extends AbstractBlockParser {
                 if (Parsing.isSpaceOrTab(state.getLine(), nextNonSpace + 1)) {
                     newColumn++;
                 }
-                return BlockStart.of(new BlockQuoteParser()).atColumn(newColumn);
+                BlockQuoteParser parser = new BlockQuoteParser();
+                parser.addSourceSpan(SourceSpans.fromState(state, nextNonSpace));
+                return BlockStart.of(parser).atColumn(newColumn);
             } else {
                 return BlockStart.none();
             }

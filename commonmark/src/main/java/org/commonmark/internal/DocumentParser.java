@@ -1,23 +1,15 @@
 package org.commonmark.internal;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.Reader;
 import org.commonmark.internal.util.Parsing;
 import org.commonmark.internal.util.Substring;
 import org.commonmark.node.*;
 import org.commonmark.parser.InlineParser;
 import org.commonmark.parser.block.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.LinkedHashSet;
-import java.util.HashSet;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.*;
 
 public class DocumentParser implements ParserState {
 
@@ -31,6 +23,7 @@ public class DocumentParser implements ParserState {
             IndentedCodeBlock.class));
 
     private static final Map<Class<? extends Block>, BlockParserFactory> NODES_TO_CORE_FACTORIES;
+
     static {
         Map<Class<? extends Block>, BlockParserFactory> map = new HashMap<>();
         map.put(BlockQuote.class, new BlockQuoteParser.Factory());
@@ -45,6 +38,11 @@ public class DocumentParser implements ParserState {
 
 
     private CharSequence line;
+
+    /**
+     * Line index (0-based)
+     */
+    private int lineIndex = 0;
 
     /**
      * current index (offset) in input line (0-based)
@@ -77,7 +75,7 @@ public class DocumentParser implements ParserState {
     public DocumentParser(List<BlockParserFactory> blockParserFactories, InlineParser inlineParser) {
         this.blockParserFactories = blockParserFactories;
         this.inlineParser = inlineParser;
-        
+
         this.documentBlockParser = new DocumentBlockParser();
         activateBlockParser(this.documentBlockParser);
     }
@@ -117,7 +115,7 @@ public class DocumentParser implements ParserState {
 
         return finalizeAndProcess();
     }
-    
+
     public Document parse(Reader input) throws IOException {
         BufferedReader bufferedReader;
         if (input instanceof BufferedReader) {
@@ -125,7 +123,7 @@ public class DocumentParser implements ParserState {
         } else {
             bufferedReader = new BufferedReader(input);
         }
-        
+
         String line;
         while ((line = bufferedReader.readLine()) != null) {
             incorporateLine(line);
@@ -137,6 +135,10 @@ public class DocumentParser implements ParserState {
     @Override
     public CharSequence getLine() {
         return line;
+    }
+
+    public int getLineIndex() {
+        return lineIndex;
     }
 
     @Override
@@ -257,6 +259,9 @@ public class DocumentParser implements ParserState {
         if (!allClosed && !isBlank() &&
                 getActiveBlockParser() instanceof ParagraphParser) {
             // lazy paragraph continuation
+            for (BlockParser parser : activeBlockParsers.subList(1, activeBlockParsers.size())) {
+                parser.onLazyContinuationLine(this);
+            }
             addLine();
 
         } else {
@@ -271,10 +276,14 @@ public class DocumentParser implements ParserState {
                 addLine();
             } else if (!isBlank()) {
                 // create paragraph container for line
-                addChild(new ParagraphParser());
+                SourceSpan sourceSpan = SourceSpans.fromState(this, this.getNextNonSpaceIndex());
+                ParagraphParser paragraphParser = new ParagraphParser(sourceSpan);
+                addChild(paragraphParser);
                 addLine();
             }
         }
+
+        lineIndex++;
     }
 
     private void findNextNonSpace() {
@@ -391,6 +400,7 @@ public class DocumentParser implements ParserState {
         }
 
         blockParser.closeBlock();
+        blockParser.getBlock().setSourceSpans(blockParser.getSourceSpans());
 
         if (blockParser instanceof ParagraphParser
                 && inlineParser instanceof ReferenceParser) {
@@ -448,8 +458,8 @@ public class DocumentParser implements ParserState {
     }
 
     /**
-     * Add block of type tag as a child of the tip. If the tip can't  accept children, close and finalize it and try
-     * its parent, and so on til we find a block that can accept children.
+     * Add block of type tag as a child of the tip. If the tip can't accept children, close and finalize it and try
+     * its parent, and so on until we find a block that can accept children.
      */
     private <T extends BlockParser> T addChild(T blockParser) {
         while (!getActiveBlockParser().canContain(blockParser.getBlock())) {
@@ -529,7 +539,7 @@ public class DocumentParser implements ParserState {
         this.processInlines();
         return this.documentBlockParser.getBlock();
     }
-    
+
     private static class MatchedBlockParserImpl implements MatchedBlockParser {
 
         private final BlockParser matchedBlockParser;

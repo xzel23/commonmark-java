@@ -1,7 +1,9 @@
 package org.commonmark.internal;
 
 import org.commonmark.internal.util.Parsing;
-import org.commonmark.node.*;
+import org.commonmark.node.Block;
+import org.commonmark.node.IndentedCodeBlock;
+import org.commonmark.node.Paragraph;
 import org.commonmark.parser.block.*;
 
 import java.util.regex.Pattern;
@@ -21,6 +23,7 @@ public class IndentedCodeBlockParser extends AbstractBlockParser {
     @Override
     public BlockContinue tryContinue(ParserState state) {
         if (state.getIndent() >= Parsing.CODE_BLOCK_INDENT) {
+            calculateAndAddSourceSpan(state);
             return BlockContinue.atColumn(state.getColumn() + Parsing.CODE_BLOCK_INDENT);
         } else if (state.isBlank()) {
             return BlockContinue.atIndex(state.getNextNonSpaceIndex());
@@ -45,13 +48,33 @@ public class IndentedCodeBlockParser extends AbstractBlockParser {
         block.setLiteral(literal);
     }
 
+    private void calculateAndAddSourceSpan(ParserState state) {
+        int indentIndex = calculateIndentIndex(state);
+        if (indentIndex < state.getLine().length()) {
+            addSourceSpan(SourceSpans.fromState(state, indentIndex));
+        }
+    }
+
+    private static int calculateIndentIndex(ParserState state) {
+        int index = state.getIndex();
+        while (index < state.getIndex() + Parsing.CODE_BLOCK_INDENT) {
+            if (state.getLine().charAt(index) == '\t') {
+                return index + 1;
+            }
+            index++;
+        }
+        return index;
+    }
+
     public static class Factory extends AbstractBlockParserFactory {
 
         @Override
         public BlockStart tryStart(ParserState state, MatchedBlockParser matchedBlockParser) {
             // An indented code block cannot interrupt a paragraph.
             if (state.getIndent() >= Parsing.CODE_BLOCK_INDENT && !state.isBlank() && !(state.getActiveBlockParser().getBlock() instanceof Paragraph)) {
-                return BlockStart.of(new IndentedCodeBlockParser()).atColumn(state.getColumn() + Parsing.CODE_BLOCK_INDENT);
+                IndentedCodeBlockParser parser = new IndentedCodeBlockParser();
+                parser.calculateAndAddSourceSpan(state);
+                return BlockStart.of(parser).atColumn(state.getColumn() + Parsing.CODE_BLOCK_INDENT);
             } else {
                 return BlockStart.none();
             }

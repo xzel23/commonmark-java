@@ -43,6 +43,7 @@ public class FencedCodeBlockParser extends AbstractBlockParser {
                         .find());
         if (matches && matcher.group(0).length() >= block.getFenceLength()) {
             // closing fence - we're at end of line, so we can finalize now
+            addSourceSpan(SourceSpans.fromState(state, nextNonSpace));
             return BlockContinue.finished();
         } else {
             // skip optional spaces of fence indent
@@ -52,6 +53,7 @@ public class FencedCodeBlockParser extends AbstractBlockParser {
                 i--;
             }
         }
+        addSourceSpan(SourceSpans.fromState(state, newIndex));
         return BlockContinue.atIndex(newIndex);
     }
 
@@ -82,12 +84,12 @@ public class FencedCodeBlockParser extends AbstractBlockParser {
             if (state.getIndent() < 4 && (matcher = OPENING_FENCE.matcher(line.subSequence(nextNonSpace, line.length()))).find()) {
                 int fenceLength = matcher.group(0).length();
                 char fenceChar = matcher.group(0).charAt(0);
-                FencedCodeBlockParser blockParser = new FencedCodeBlockParser(fenceChar, fenceLength, state.getIndent());
-                return BlockStart.of(blockParser).atIndex(nextNonSpace + fenceLength);
+                FencedCodeBlockParser parser = new FencedCodeBlockParser(fenceChar, fenceLength, state.getIndent());
+                parser.addSourceSpan(SourceSpans.fromState(state, nextNonSpace));
+                return BlockStart.of(parser).atIndex(nextNonSpace + fenceLength);
             } else {
                 return BlockStart.none();
             }
         }
     }
 }
-

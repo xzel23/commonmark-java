@@ -38,11 +38,21 @@ public class ListBlockParser extends AbstractBlockParser {
     public BlockContinue tryContinue(ParserState state) {
         // List blocks themselves don't have any markers, only list items. So try to stay in the list.
         // If there is a block start other than list item, canContain makes sure that this list is closed.
+        // Also, our source spans are handled by the list item parser.
         return BlockContinue.atIndex(state.getIndex());
+    }
+
+    @Override
+    public void onLazyContinuationLine(ParserState state) {
+        addSourceSpan(SourceSpans.fromState(state, state.getNextNonSpaceIndex()));
     }
 
     public void setTight(boolean tight) {
         block.setTight(tight);
+    }
+
+    void addSourceSpanFromItem(SourceSpan sourceSpan) {
+        addSourceSpan(sourceSpan);
     }
 
     /**
@@ -150,17 +160,26 @@ public class ListBlockParser extends AbstractBlockParser {
             }
 
             int newColumn = listData.contentColumn;
-            ListItemParser listItemParser = new ListItemParser(newColumn - state.getColumn());
+            int contentIndent = newColumn - state.getColumn();
 
-            // prepend the list block if needed
+            SourceSpan sourceSpan = SourceSpans.fromState(state, markerIndex);
+
+            // Prepend a new list block if needed
             if (!(matched instanceof ListBlockParser) ||
                     !(listsMatch((ListBlock) matched.getBlock(), listData.listBlock))) {
 
                 ListBlockParser listBlockParser = new ListBlockParser(listData.listBlock);
                 listBlockParser.setTight(true);
+                listBlockParser.addSourceSpan(sourceSpan);
+
+                ListItemParser listItemParser = new ListItemParser(contentIndent, listBlockParser, sourceSpan);
 
                 return BlockStart.of(listBlockParser, listItemParser).atColumn(newColumn);
             } else {
+                ListBlockParser listBlockParser = (ListBlockParser) matched;
+                listBlockParser.addSourceSpan(sourceSpan);
+
+                ListItemParser listItemParser = new ListItemParser(contentIndent, listBlockParser, sourceSpan);
                 return BlockStart.of(listItemParser).atColumn(newColumn);
             }
         }
