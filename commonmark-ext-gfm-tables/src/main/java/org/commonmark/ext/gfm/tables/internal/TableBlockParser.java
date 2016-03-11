@@ -37,7 +37,7 @@ public class TableBlockParser extends AbstractBlockParser {
     public BlockContinue tryContinue(ParserState state) {
         if (state.getLine().toString().contains("|")) {
             addSourceSpan(SourceSpan.of(state.getLineIndex() + 1, state.getNextNonSpaceIndex() + 1, state.getLine().length()));
-            return BlockContinue.atIndex(state.getIndex());
+            return BlockContinue.atIndex(state.getNextNonSpaceIndex());
         } else {
             return BlockContinue.none();
         }
@@ -69,7 +69,7 @@ public class TableBlockParser extends AbstractBlockParser {
             CharSequence rowLine = rowLines.get(rowIndex);
             SourceSpan rowSpan = getSourceSpans().get(rowIndex);
 
-            List<String> cells = split(rowLine);
+            List<CellSource> cells = split(rowLine, rowSpan.getLineNumber(), rowSpan.getFirstColumn());
 
             TableRow tableRow = new TableRow();
             tableRow.setSourceSpans(Collections.singletonList(rowSpan));
@@ -80,12 +80,15 @@ public class TableBlockParser extends AbstractBlockParser {
 
             // Body can not have more columns than head
             for (int i = 0; i < headerColumns; i++) {
-                String cell = i < cells.size() ? cells.get(i) : "";
+                CellSource cell = i < cells.size() ? cells.get(i) : new CellSource("", null);
                 TableCell.Alignment alignment = i < alignments.size() ? alignments.get(i) : null;
                 TableCell tableCell = new TableCell();
                 tableCell.setHeader(header);
                 tableCell.setAlignment(alignment);
-                inlineParser.parse(cell.trim(), tableCell);
+                if (cell.sourceSpan != null) {
+                    tableCell.setSourceSpans(Collections.singletonList(cell.sourceSpan));
+                }
+                inlineParser.parse(cell.content, tableCell);
                 tableRow.appendChild(tableCell);
             }
 
@@ -102,10 +105,10 @@ public class TableBlockParser extends AbstractBlockParser {
     }
 
     private static List<TableCell.Alignment> parseAlignment(CharSequence separatorLine) {
-        List<String> parts = split(separatorLine);
+        List<CellSource> parts = split(separatorLine, 0, 0);
         List<TableCell.Alignment> alignments = new ArrayList<>();
-        for (String part : parts) {
-            String trimmed = part.trim();
+        for (CellSource part : parts) {
+            String trimmed = part.content.trim();
             boolean left = trimmed.startsWith(":");
             boolean right = trimmed.endsWith(":");
             TableCell.Alignment alignment = getAlignment(left, right);
@@ -114,16 +117,15 @@ public class TableBlockParser extends AbstractBlockParser {
         return alignments;
     }
 
-    private static List<String> split(CharSequence input) {
-        String line = input.toString();//.trim();
-        if (line.startsWith("|")) {
-            line = line.substring(1);
-        }
-        List<String> cells = new ArrayList<>();
+    private static List<CellSource> split(CharSequence input, int lineNumber, int inputFirstColumn) {
+        int firstIndex = input.charAt(0) == '|' ? 1 : 0;
+        int firstColumn = inputFirstColumn + firstIndex;
+
+        List<CellSource> cells = new ArrayList<>();
         StringBuilder sb = new StringBuilder();
         boolean escape = false;
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
+        for (int i = firstIndex; i < input.length(); i++) {
+            char c = input.charAt(i);
             if (escape) {
                 escape = false;
                 sb.append(c);
@@ -135,8 +137,11 @@ public class TableBlockParser extends AbstractBlockParser {
                         sb.append(c);
                         break;
                     case '|':
-                        cells.add(sb.toString());
+                        String content = sb.toString();
+                        cells.add(CellSource.of(content, lineNumber, firstColumn));
                         sb.setLength(0);
+                        // + 1 to skip the pipe itself for the next cell's span
+                        firstColumn = inputFirstColumn + i + 1;
                         break;
                     default:
                         sb.append(c);
@@ -144,7 +149,8 @@ public class TableBlockParser extends AbstractBlockParser {
             }
         }
         if (sb.length() > 0) {
-            cells.add(sb.toString());
+            String content = sb.toString();
+            cells.add(CellSource.of(content, lineNumber, firstColumn));
         }
         return cells;
     }
@@ -170,8 +176,8 @@ public class TableBlockParser extends AbstractBlockParser {
             if (paragraph != null && paragraph.toString().contains("|") && !paragraph.toString().contains("\n")) {
                 CharSequence separatorLine = line.subSequence(state.getIndex(), line.length());
                 if (TABLE_HEADER_SEPARATOR.matcher(separatorLine).matches()) {
-                    List<String> headParts = split(paragraph);
-                    List<String> separatorParts = split(separatorLine);
+                    List<CellSource> headParts = split(paragraph, 0, 0);
+                    List<CellSource> separatorParts = split(separatorLine, 0, 0);
                     if (separatorParts.size() >= headParts.size()) {
                         TableBlockParser parser = new TableBlockParser(paragraph);
                         List<SourceSpan> sourceSpans = matchedBlockParser.getMatchedBlockParser().getSourceSpans();
@@ -186,4 +192,23 @@ public class TableBlockParser extends AbstractBlockParser {
         }
     }
 
+    private static class CellSource {
+
+        private final String content;
+        private final SourceSpan sourceSpan;
+
+        public static CellSource of(String content, int lineNumber, int firstColumn) {
+            if (!content.isEmpty()) {
+                int lastColumn = firstColumn + content.length() - 1;
+                return new CellSource(content, SourceSpan.of(lineNumber, firstColumn, lastColumn));
+            } else {
+                return new CellSource(content, null);
+            }
+        }
+
+        private CellSource(String content, SourceSpan sourceSpan) {
+            this.content = content;
+            this.sourceSpan = sourceSpan;
+        }
+    }
 }
