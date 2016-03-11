@@ -42,7 +42,7 @@ public class DocumentParser implements ParserState {
     /**
      * Line index (0-based)
      */
-    private int lineIndex = 0;
+    private int lineIndex = -1;
 
     /**
      * current index (offset) in input line (0-based)
@@ -176,6 +176,7 @@ public class DocumentParser implements ParserState {
      * line of input, then finalizing the document.
      */
     private void incorporateLine(CharSequence ln) {
+        lineIndex++;
         line = Parsing.prepareLine(ln);
         index = 0;
         column = 0;
@@ -282,8 +283,6 @@ public class DocumentParser implements ParserState {
                 addLine();
             }
         }
-
-        lineIndex++;
     }
 
     private void findNextNonSpace() {

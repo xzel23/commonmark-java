@@ -80,6 +80,10 @@ public class SourceSpansTest {
                 SourceSpan.of(1, 3, 5), SourceSpan.of(2, 3, 5), SourceSpan.of(3, 3, 5));
         assertSpans("> ```\n> foo\n> ```\n", FencedCodeBlock.class,
                 SourceSpan.of(1, 3, 5), SourceSpan.of(2, 3, 5), SourceSpan.of(3, 3, 5));
+
+        Node document = PARSER.parse("```\nfoo\n```\nbar\n");
+        Paragraph paragraph = (Paragraph) document.getLastChild();
+        assertThat(paragraph.getSourceSpans(), contains(SourceSpan.of(4, 1, 3)));
     }
 
     @Test
