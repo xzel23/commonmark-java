@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.emptyIterable;
 import static org.junit.Assert.assertThat;
 
 public class TablesTest extends RenderingTestCase {
@@ -307,31 +308,45 @@ public class TablesTest extends RenderingTestCase {
 
     @Test
     public void sourceSpans() {
-        Node document = PARSER.parse("Abc|Def\n---|---\n1|2\n3|4\n");
+        Node document = PARSER.parse("Abc|Def\n---|---\n|1|2\n 3|four|\n|||\n");
 
         TableBlock block = (TableBlock) document.getFirstChild();
-        assertThat(block.getSourceSpans(),
-                contains(SourceSpan.of(1, 1, 7), SourceSpan.of(2, 1, 7), SourceSpan.of(3, 1, 3), SourceSpan.of(4, 1, 3)));
+        assertThat(block.getSourceSpans(), contains(SourceSpan.of(1, 1, 7), SourceSpan.of(2, 1, 7),
+                SourceSpan.of(3, 1, 4), SourceSpan.of(4, 2, 8), SourceSpan.of(5, 1, 3)));
 
         TableHead head = (TableHead) block.getFirstChild();
         assertThat(head.getSourceSpans(), contains(SourceSpan.of(1, 1, 7)));
 
         TableRow headRow = (TableRow) head.getFirstChild();
         assertThat(headRow.getSourceSpans(), contains(SourceSpan.of(1, 1, 7)));
-        // TODO:
-//        TableCell headRowCell1 = (TableCell) headRow.getFirstChild();
-//        TableCell headRowCell2 = (TableCell) headRow.getLastChild();
-//        assertThat(headRowCell1.getSourceSpans(), contains(SourceSpan.of(1, 1, 3)));
-//        assertThat(headRowCell2.getSourceSpans(), contains(SourceSpan.of(1, 5, 7)));
+        TableCell headRowCell1 = (TableCell) headRow.getFirstChild();
+        TableCell headRowCell2 = (TableCell) headRow.getLastChild();
+        assertThat(headRowCell1.getSourceSpans(), contains(SourceSpan.of(1, 1, 3)));
+        assertThat(headRowCell2.getSourceSpans(), contains(SourceSpan.of(1, 5, 7)));
 
         TableBody body = (TableBody) block.getLastChild();
-        assertThat(body.getSourceSpans(), contains(SourceSpan.of(3, 1, 3), SourceSpan.of(4, 1, 3)));
+        assertThat(body.getSourceSpans(), contains(SourceSpan.of(3, 1, 4), SourceSpan.of(4, 2, 8), SourceSpan.of(5, 1, 3)));
 
         TableRow bodyRow1 = (TableRow) body.getFirstChild();
-        assertThat(bodyRow1.getSourceSpans(), contains(SourceSpan.of(3, 1, 3)));
+        assertThat(bodyRow1.getSourceSpans(), contains(SourceSpan.of(3, 1, 4)));
+        TableCell bodyRow1Cell1 = (TableCell) bodyRow1.getFirstChild();
+        TableCell bodyRow1Cell2 = (TableCell) bodyRow1.getLastChild();
+        assertThat(bodyRow1Cell1.getSourceSpans(), contains(SourceSpan.of(3, 2, 2)));
+        assertThat(bodyRow1Cell2.getSourceSpans(), contains(SourceSpan.of(3, 4, 4)));
 
-        TableRow bodyRow2 = (TableRow) body.getLastChild();
-        assertThat(bodyRow2.getSourceSpans(), contains(SourceSpan.of(4, 1, 3)));
+        TableRow bodyRow2 = (TableRow) body.getFirstChild().getNext();
+        assertThat(bodyRow2.getSourceSpans(), contains(SourceSpan.of(4, 2, 8)));
+        TableCell bodyRow2Cell1 = (TableCell) bodyRow2.getFirstChild();
+        TableCell bodyRow2Cell2 = (TableCell) bodyRow2.getLastChild();
+        assertThat(bodyRow2Cell1.getSourceSpans(), contains(SourceSpan.of(4, 2, 2)));
+        assertThat(bodyRow2Cell2.getSourceSpans(), contains(SourceSpan.of(4, 4, 7)));
+
+        TableRow bodyRow3 = (TableRow) body.getLastChild();
+        assertThat(bodyRow3.getSourceSpans(), contains(SourceSpan.of(5, 1, 3)));
+        TableCell bodyRow3Cell1 = (TableCell) bodyRow3.getFirstChild();
+        TableCell bodyRow3Cell2 = (TableCell) bodyRow3.getLastChild();
+        assertThat(bodyRow3Cell1.getSourceSpans(), emptyIterable());
+        assertThat(bodyRow3Cell2.getSourceSpans(), emptyIterable());
     }
 
     @Override
