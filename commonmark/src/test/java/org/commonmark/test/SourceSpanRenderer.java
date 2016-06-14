@@ -20,24 +20,23 @@ public class SourceSpanRenderer {
 
         String[] lines = source.split("\n");
 
-        int lineNumber = 1;
-        for (String line : lines) {
-            Map<Integer, List<String>> lineMarkers = markers.get(lineNumber);
+        for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            String line = lines[lineIndex];
+            Map<Integer, List<String>> lineMarkers = markers.get(lineIndex);
             for (int i = 0; i < line.length(); i++) {
-                appendMarkers(lineMarkers, i + 1, sb);
+                appendMarkers(lineMarkers, i, sb);
                 sb.append(line.charAt(i));
             }
-            appendMarkers(lineMarkers, line.length() + 1, sb);
+            appendMarkers(lineMarkers, line.length(), sb);
             sb.append("\n");
-            lineNumber++;
         }
 
         return sb.toString();
     }
 
-    private static void appendMarkers(Map<Integer, List<String>> lineMarkers, int columnNumber, StringBuilder sb) {
+    private static void appendMarkers(Map<Integer, List<String>> lineMarkers, int columnIndex, StringBuilder sb) {
         if (lineMarkers != null) {
-            List<String> columnMarkers = lineMarkers.get(columnNumber);
+            List<String> columnMarkers = lineMarkers.get(columnIndex);
             if (columnMarkers != null) {
                 for (String marker : columnMarkers) {
                     sb.append(marker);
@@ -65,25 +64,26 @@ public class SourceSpanRenderer {
                     String opener = String.valueOf(opening.charAt(markerIndex % opening.length()));
                     String closer = String.valueOf(closing.charAt(markerIndex % closing.length()));
 
-                    getMarkers(sourceSpan.getLineNumber(), sourceSpan.getFirstColumn()).add(opener);
-                    getMarkers(sourceSpan.getLineNumber(), sourceSpan.getLastColumn() + 1).add(0, closer);
+                    int col = sourceSpan.getColumnIndex();
+                    getMarkers(sourceSpan.getLineIndex(), col).add(opener);
+                    getMarkers(sourceSpan.getLineIndex(), col + sourceSpan.getLength()).add(0, closer);
                 }
                 markerIndex++;
             }
             super.visitChildren(parent);
         }
 
-        private List<String> getMarkers(int lineNumber, int columnNumber) {
-            Map<Integer, List<String>> columnMap = markers.get(lineNumber);
+        private List<String> getMarkers(int lineIndex, int columnIndex) {
+            Map<Integer, List<String>> columnMap = markers.get(lineIndex);
             if (columnMap == null) {
                 columnMap = new HashMap<>();
-                markers.put(lineNumber, columnMap);
+                markers.put(lineIndex, columnMap);
             }
 
-            List<String> markers = columnMap.get(columnNumber);
+            List<String> markers = columnMap.get(columnIndex);
             if (markers == null) {
                 markers = new LinkedList<>();
-                columnMap.put(columnNumber, markers);
+                columnMap.put(columnIndex, markers);
             }
 
             return markers;

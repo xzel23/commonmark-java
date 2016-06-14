@@ -4,34 +4,39 @@ import java.util.Objects;
 
 public class SourceSpan {
 
-    private final int lineNumber;
+    private final int lineIndex;
+    private final int columnIndex;
+    private final int length;
 
-    // TODO: Confusing with "column" in parser?
-    private final int firstColumn;
-
-    // TODO: Use length instead? Not sure.
-    private final int lastColumn;
-
-    public static SourceSpan of(int lineNumber, int firstColumn, int lastColumn) {
-        return new SourceSpan(lineNumber, firstColumn, lastColumn);
+    public static SourceSpan of(int lineIndex, int columnIndex, int length) {
+        return new SourceSpan(lineIndex, columnIndex, length);
     }
 
-    private SourceSpan(int lineNumber, int firstColumn, int lastColumn) {
-        this.lineNumber = lineNumber;
-        this.firstColumn = firstColumn;
-        this.lastColumn = lastColumn;
+    private SourceSpan(int lineIndex, int columnIndex, int length) {
+        this.lineIndex = lineIndex;
+        this.columnIndex = columnIndex;
+        this.length = length;
     }
 
-    public int getFirstColumn() {
-        return firstColumn;
+    /**
+     * @return 0-based index of line in source
+     */
+    public int getLineIndex() {
+        return lineIndex;
     }
 
-    public int getLastColumn() {
-        return lastColumn;
+    /**
+     * @return 0-based index of column (character on line) in source
+     */
+    public int getColumnIndex() {
+        return columnIndex;
     }
 
-    public int getLineNumber() {
-        return lineNumber;
+    /**
+     * @return length of the span
+     */
+    public int getLength() {
+        return length;
     }
 
     @Override
@@ -43,22 +48,22 @@ public class SourceSpan {
             return false;
         }
         SourceSpan that = (SourceSpan) o;
-        return lineNumber == that.lineNumber &&
-                firstColumn == that.firstColumn &&
-                lastColumn == that.lastColumn;
+        return lineIndex == that.lineIndex &&
+                columnIndex == that.columnIndex &&
+                length == that.length;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(lineNumber, firstColumn, lastColumn);
+        return Objects.hash(lineIndex, columnIndex, length);
     }
 
     @Override
     public String toString() {
         return "SourceSpan{" +
-                "lineNumber=" + lineNumber +
-                ", firstColumn=" + firstColumn +
-                ", lastColumn=" + lastColumn +
+                "lineIndex=" + lineIndex +
+                ", columnIndex=" + columnIndex +
+                ", length=" + length +
                 "}";
     }
 }

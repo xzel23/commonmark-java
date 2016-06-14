@@ -6,6 +6,7 @@ import org.commonmark.parser.block.ParserState;
 public class SourceSpans {
 
     public static SourceSpan fromState(ParserState parserState, int startIndex) {
-        return SourceSpan.of(parserState.getLineIndex() + 1, startIndex + 1, parserState.getLine().length());
+        int length = parserState.getLine().length();
+        return SourceSpan.of(parserState.getLineIndex(), startIndex, length - startIndex);
     }
 }
