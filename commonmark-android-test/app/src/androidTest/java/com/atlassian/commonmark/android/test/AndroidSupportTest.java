@@ -60,6 +60,7 @@ public class AndroidSupportTest {
     @Test
     public void headingAnchorExtensionTest() throws Exception {
         parseWithExtensionsTest(HeadingAnchorExtension.create());
+        org.junit.Assert.fail("is this working?");
     }
 
     @Test
