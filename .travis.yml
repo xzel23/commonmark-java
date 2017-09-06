@@ -4,6 +4,7 @@ matrix:
   include:
     - jdk: oraclejdk9
       env: TEST=java
+      dist: trusty
     - jdk: oraclejdk8
       env: TEST=java
     - jdk: openjdk7
