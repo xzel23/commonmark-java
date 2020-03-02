@@ -4,7 +4,7 @@
     <parent>
         <groupId>com.atlassian.commonmark</groupId>
         <artifactId>commonmark-parent</artifactId>
-        <version>0.14.0</version>
+        <version>0.14.0-jpms</version>
     </parent>
 
     <artifactId>commonmark-ext-autolink</artifactId>
@@ -12,7 +12,10 @@
     <description>commonmark-java extension for turning plain URLs and email addresses into links</description>
 
     <properties>
-        <autolink.version>0.10.0</autolink.version>
+        <maven.compiler.release>11</maven.compiler.release>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <autolink.version>0.10.0-jpms</autolink.version>
     </properties>
 
     <dependencies>
